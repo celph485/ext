@@ -72,11 +72,11 @@ class SampleListener(stomp.ConnectionListener):
 
     def on_message(self, header, message):
         log.info('received a data message: \n %s' % message)
-        can_send = can_send_data_out(message)
-        log.info('can send: %r' % can_send)
-        if can_send:
-            formatted_msg = get_updated_message(message)
-            send_data_to_ws(formatted_msg)
+        #can_send = can_send_data_out(message)
+        #log.info('can send: %r' % can_send)
+        #if can_send:
+        #    formatted_msg = get_updated_message(message)
+        #    send_data_to_ws(formatted_msg)
 
     def on_disconnected(self):
         log.warning('MQ disconnected')
@@ -93,3 +93,5 @@ conn = stomp.Connection(host_and_ports=HOST_AND_PORTS,
 conn.set_listener('SampleListener', SampleListener(conn))
 conn.connect(MQ_USER, MQ_PASS, wait=True)
 conn.subscribe(destination=MQ_DEST, id=1, ack='auto')
+time.sleep(15)
+conn.disconnect()
