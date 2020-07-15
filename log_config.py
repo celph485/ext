@@ -1,5 +1,5 @@
 import logging
-from config_file import *
+from config_file import config
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from datetime import date

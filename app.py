@@ -26,41 +26,11 @@ GMT_IMEI_LIST = config['GMT_IMEI'].split(',')
 DATE_TIME_FORMAT = config['DEF_DATETIME_FORMAT']
 
 
-def can_send_data_out(message):
-    msg_dict = eval(message)
-    imei = msg_dict['imei_no']
-    return imei in mapping_config.values()
-
-
 def send_data_to_ws(message):
-    log.info('Sending data to API.')
+    log.info('Sending data to API. ')
+    log.info(message)
     resp = requests.post(WS_URL, data=message)
     log.info('response from API: {}'.format(resp.text))
-
-
-def update_datetime_str(str_dt):
-    dt_obj = datetime.strptime(str_dt, DATE_TIME_FORMAT)
-    updated_dt_obj = dt_obj + timedelta(minutes=330)
-    return updated_dt_obj.strftime(DATE_TIME_FORMAT)
-
-
-def update_message_for_tz(message):
-    log.info('Updating timezone for the message, adding +0530 Hrs')
-    msg_dict = eval(message)
-    datetime_str = msg_dict['time']
-    updated_datetime_str = update_datetime_str(datetime_str)
-    msg_dict['time'] = updated_datetime_str
-    updated_message = json.dumps(msg_dict)
-    log.info('Updated message: %s'% updated_message)
-    return updated_message
-
-
-def get_updated_message(message):
-    msg_dict = eval(message)
-    imei = msg_dict['imei_no']
-    if imei in GMT_IMEI_LIST:
-        return update_message_for_tz(message)
-    return message
 
 
 class SampleListener(stomp.ConnectionListener):
@@ -72,11 +42,28 @@ class SampleListener(stomp.ConnectionListener):
 
     def on_message(self, header, message):
         log.info('received a data message: \n %s' % message)
-        #can_send = can_send_data_out(message)
-        #log.info('can send: %r' % can_send)
-        #if can_send:
-        #    formatted_msg = get_updated_message(message)
-        #    send_data_to_ws(formatted_msg)
+        msg_dict = eval(message)
+        imei = msg_dict['imei_no']
+        if imei in mapping_config.values():
+            time_str = msg_dict['time']
+            log.debug('time: %s'% time_str)
+            time_int = int(time_str)
+            if len(time_str) == 13:
+                log.debug('time is in millisecond, converting it to second') 
+                time_int /= 1000
+                log.debug('Time in seconds: %d' % time_int)
+
+            if imei in GMT_IMEI_LIST:
+                log.info('Updating timezone for the message, adding +0530 Hrs')
+                time_int +=  19800
+                log.debug('Time in seconds: %d' % time_int)
+
+            date_time_str = time.strftime(DATE_TIME_FORMAT, time.localtime(time_int))
+            msg_dict['time'] = date_time_str
+            updated_message = json.dumps(msg_dict)
+            send_data_to_ws(updated_message)
+        else:
+            log.warn('IMEI not whitelisted for sending data')
 
     def on_disconnected(self):
         log.warning('MQ disconnected')
